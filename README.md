@@ -1,2 +1,2 @@
-LR74476 Original Legacy Code Cloned from Professor John Rowley repository 
+Luis Rangel 74476 Original Legacy Code Cloned from Professor John Rowley repository 
 Assignment #1 : Upgrade Application
