@@ -16,7 +16,6 @@ permissions:
   id-token: write
 
 env:
-  DOTNET_VERSION_6: "6.0.x"   # legacy (remove once everything is upgraded)
   DOTNET_VERSION_10: "10.0.x" # "latest" acceptable for the assignment (8/9/10 ok)
 
 jobs:
@@ -25,12 +24,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      # Legacy support so net6.0 solutions can run tests while you upgrade them
-      - name: Setup .NET 6 (legacy)
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION_6 }}
 
       # Latest SDK for upgraded code
       - name: Setup .NET 10 (latest)
