@@ -37,12 +37,21 @@ namespace SportsStore.Controllers
 
 			if (ModelState.IsValid)
 			{
-				order.Lines = cart.Lines.ToArray();
-				repository.SaveOrder(order);
-				_logger.LogInformation("Order {OrderId} created successfully for {Name} with {ItemCount} items",
-					order.OrderID, order.Name, cart.Lines.Count());
-				cart.Clear();
-				return RedirectToPage("/Completed", new { orderId = order.OrderID });
+				try
+				{
+					order.Lines = cart.Lines.ToArray();
+					repository.SaveOrder(order);
+					_logger.LogInformation("Order {OrderId} created successfully for {Name} with {ItemCount} items",
+						order.OrderID, order.Name, cart.Lines.Count());
+					cart.Clear();
+					return RedirectToPage("/Completed", new { orderId = order.OrderID });
+				}
+				catch (Exception ex)
+				{
+					_logger.LogError(ex, "Failed to save order for {Name}", order.Name);
+					ModelState.AddModelError("", "There was an error processing your order. Please try again.");
+					return View(order);
+				}
 			}
 			else
 			{

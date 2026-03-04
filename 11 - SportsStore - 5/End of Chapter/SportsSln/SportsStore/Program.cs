@@ -22,12 +22,19 @@ try
 
 	var builder = WebApplication.CreateBuilder(args);
 
-	builder.Host.UseSerilog();
+	// Now reads MinimumLevel overrides from appsettings.json
+	builder.Host.UseSerilog((ctx, lc) => lc
+		.ReadFrom.Configuration(ctx.Configuration)
+		.Enrich.FromLogContext()
+		.WriteTo.Console()
+		.WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
+		.WriteTo.Seq("http://localhost:5341"));
 
 	builder.Services.AddControllersWithViews();
 	builder.Services.AddDbContext<StoreDbContext>(opts => {
 		opts.UseSqlServer(
-			builder.Configuration["ConnectionStrings:SportsStoreConnection"]);
+	builder.Configuration["ConnectionStrings:SportsStoreConnection"] ?? "");
+
 	});
 	builder.Services.AddScoped<IStoreRepository, EFStoreRepository>();
 	builder.Services.AddScoped<IOrderRepository, EFOrderRepository>();
@@ -39,7 +46,7 @@ try
 	builder.Services.AddServerSideBlazor();
 	builder.Services.AddDbContext<AppIdentityDbContext>(options =>
 		options.UseSqlServer(
-			builder.Configuration["ConnectionStrings:IdentityConnection"]));
+	builder.Configuration["ConnectionStrings:IdentityConnection"] ?? ""));
 	builder.Services.AddIdentity<IdentityUser, IdentityRole>()
 		.AddEntityFrameworkStores<AppIdentityDbContext>();
 
