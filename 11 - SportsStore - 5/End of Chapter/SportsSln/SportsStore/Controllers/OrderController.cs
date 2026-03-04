@@ -1,32 +1,54 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SportsStore.Models;
 
-namespace SportsStore.Controllers {
+namespace SportsStore.Controllers
+{
+	public class OrderController : Controller
+	{
+		private IOrderRepository repository;
+		private Cart cart;
+		private readonly ILogger<OrderController> _logger;
 
-    public class OrderController : Controller {
-        private IOrderRepository repository;
-        private Cart cart;
+		public OrderController(IOrderRepository repoService, Cart cartService,
+			ILogger<OrderController> logger)
+		{
+			repository = repoService;
+			cart = cartService;
+			_logger = logger;
+		}
 
-        public OrderController(IOrderRepository repoService, Cart cartService) {
-            repository = repoService;
-            cart = cartService;
-        }
+		public ViewResult Checkout()
+		{
+			_logger.LogInformation("Checkout page accessed");
+			return View(new Order());
+		}
 
-        public ViewResult Checkout() => View(new Order());
+		[HttpPost]
+		public IActionResult Checkout(Order order)
+		{
+			_logger.LogInformation("Checkout submitted for customer {Name}, {Line1}, {City}",
+				order.Name, order.Line1, order.City);
 
-        [HttpPost]
-        public IActionResult Checkout(Order order) {
-            if (cart.Lines.Count() == 0) {
-                ModelState.AddModelError("", "Sorry, your cart is empty!");
-            }
-            if (ModelState.IsValid) {
-                order.Lines = cart.Lines.ToArray();
-                repository.SaveOrder(order);
-                cart.Clear();
-                return RedirectToPage("/Completed", new { orderId = order.OrderID });
-            } else {
-                return View();
-            }
-        }
-    }
+			if (cart.Lines.Count() == 0)
+			{
+				_logger.LogWarning("Checkout attempted with empty cart by {Name}", order.Name);
+				ModelState.AddModelError("", "Sorry, your cart is empty!");
+			}
+
+			if (ModelState.IsValid)
+			{
+				order.Lines = cart.Lines.ToArray();
+				repository.SaveOrder(order);
+				_logger.LogInformation("Order {OrderId} created successfully for {Name} with {ItemCount} items",
+					order.OrderID, order.Name, cart.Lines.Count());
+				cart.Clear();
+				return RedirectToPage("/Completed", new { orderId = order.OrderID });
+			}
+			else
+			{
+				_logger.LogWarning("Order checkout failed validation for {Name}", order.Name);
+				return View();
+			}
+		}
+	}
 }
