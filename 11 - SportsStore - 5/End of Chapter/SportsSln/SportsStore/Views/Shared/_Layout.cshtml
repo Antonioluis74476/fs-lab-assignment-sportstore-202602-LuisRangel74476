@@ -25,5 +25,7 @@
             @RenderBody()
         </div>
     </div>
+    @Html.AntiForgeryToken()   
+    @RenderSection("Scripts", required: false)
 </body>
 </html>

@@ -33,5 +33,7 @@ namespace SportsStore.Models {
 
         [BindNever]
         public bool Shipped { get; set; }
-    }
+		public string? PaymentIntentId { get; set; }
+		public string? PaymentStatus { get; set; } // "Pending", "Paid", "Failed"
+	}
 }

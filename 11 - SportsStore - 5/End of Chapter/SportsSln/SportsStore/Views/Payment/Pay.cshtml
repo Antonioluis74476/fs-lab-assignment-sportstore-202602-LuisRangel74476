@@ -1,0 +1,104 @@
+﻿@model SportsStore.Models.Order
+@{
+    ViewBag.Title = "Secure Payment";
+}
+
+<h2>Complete Your Payment</h2>
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Order Summary</h5>
+                <p><strong>Order #:</strong> @ViewBag.OrderId</p>
+                <p><strong>Name:</strong> @Model.Name</p>
+                <p><strong>Total:</strong> @ViewBag.Amount.ToString("C")</p>
+            </div>
+        </div>
+
+        <div id="payment-message" class="alert alert-danger d-none"></div>
+
+        <div id="payment-element"></div>
+
+        <button id="submit-btn" class="btn btn-success mt-3 w-100">
+            <span id="button-text">Pay Now</span>
+            <span id="spinner" class="spinner-border spinner-border-sm d-none"></span>
+        </button>
+
+        <a href="/Order/Checkout" class="btn btn-outline-secondary mt-2 w-100">
+            Cancel & Return to Checkout
+        </a>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
+        const stripe = Stripe('@ViewBag.PublishableKey');
+        const orderId = @ViewBag.OrderId;
+        const amount = @ViewBag.Amount;
+        let elements;
+
+        async function initialize() {
+            const response = await fetch('/Payment/CreatePaymentIntent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId, amount })
+            });
+
+            if (!response.ok) {
+                showMessage('Failed to initialize payment. Please try again.');
+                return;
+            }
+
+            const { clientSecret } = await response.json();
+
+            elements = stripe.elements({ clientSecret });
+            const paymentElement = elements.create('payment');
+            paymentElement.mount('#payment-element');
+        }
+
+        document.getElementById('submit-btn').addEventListener('click', async () => {
+            setLoading(true);
+
+            const { error, paymentIntent } = await stripe.confirmPayment({
+                elements,
+                redirect: 'if_required'
+            });
+
+            if (error) {
+                showMessage(error.message);
+                setLoading(false);
+            } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+                // POST to server to confirm and finalize
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/Payment/ConfirmPayment';
+                form.innerHTML = `
+                    <input type="hidden" name="orderId" value="${orderId}" />
+                    <input type="hidden" name="paymentIntentId" value="${paymentIntent.id}" />
+                    <input type="hidden" name="__RequestVerificationToken"
+                        value="${document.querySelector('input[name=__RequestVerificationToken]')?.value ?? ''}" />
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            } else {
+                showMessage('Unexpected payment status. Please try again.');
+                setLoading(false);
+            }
+        });
+
+        function showMessage(msg) {
+            const el = document.getElementById('payment-message');
+            el.textContent = msg;
+            el.classList.remove('d-none');
+        }
+
+        function setLoading(isLoading) {
+            document.getElementById('submit-btn').disabled = isLoading;
+            document.getElementById('spinner').classList.toggle('d-none', !isLoading);
+            document.getElementById('button-text').classList.toggle('d-none', isLoading);
+        }
+
+        initialize();
+    </script>
+}

@@ -1,7 +1,8 @@
-using Microsoft.EntityFrameworkCore;
-using SportsStore.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
+using SportsStore.Infrastructure;
+using SportsStore.Models;
 
 Log.Logger = new LoggerConfiguration()
 	.MinimumLevel.Information()
@@ -49,6 +50,11 @@ try
 	builder.Configuration["ConnectionStrings:IdentityConnection"] ?? ""));
 	builder.Services.AddIdentity<IdentityUser, IdentityRole>()
 		.AddEntityFrameworkStores<AppIdentityDbContext>();
+
+	// Stripe
+	builder.Services.Configure<StripeSettings>(
+		builder.Configuration.GetSection("Stripe"));
+	builder.Services.AddScoped<IPaymentService, StripePaymentService>();
 
 	var app = builder.Build();
 
