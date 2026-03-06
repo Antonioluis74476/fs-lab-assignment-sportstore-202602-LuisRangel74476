@@ -1,0 +1,9 @@
+﻿@{
+    ViewBag.Title = "Payment Failed";
+}
+<div class="text-center mt-5">
+    <h2 class="text-danger">Payment Failed</h2>
+    <p>Unfortunately your payment could not be processed for Order #@ViewBag.OrderId.</p>
+    <a href="/Order/Checkout" class="btn btn-primary">Try Again</a>
+    <a href="/" class="btn btn-secondary">Return to Store</a>
+</div>

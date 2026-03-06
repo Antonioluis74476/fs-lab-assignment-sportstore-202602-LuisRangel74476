@@ -26,37 +26,41 @@ namespace SportsStore.Controllers
 		[HttpPost]
 		public IActionResult Checkout(Order order)
 		{
-			_logger.LogInformation("Checkout submitted for customer {Name}, {Line1}, {City}",
+			_logger.LogInformation(
+				"Checkout submitted for customer {Name}, {Line1}, {City}",
 				order.Name, order.Line1, order.City);
 
-			if (cart.Lines.Count() == 0)
+			if (!cart.Lines.Any())
 			{
 				_logger.LogWarning("Checkout attempted with empty cart by {Name}", order.Name);
 				ModelState.AddModelError("", "Sorry, your cart is empty!");
 			}
 
-			if (ModelState.IsValid)
-			{
-				try
-				{
-					order.Lines = cart.Lines.ToArray();
-					repository.SaveOrder(order);
-					_logger.LogInformation("Order {OrderId} created successfully for {Name} with {ItemCount} items",
-						order.OrderID, order.Name, cart.Lines.Count());
-					cart.Clear();
-					return RedirectToPage("/Completed", new { orderId = order.OrderID });
-				}
-				catch (Exception ex)
-				{
-					_logger.LogError(ex, "Failed to save order for {Name}", order.Name);
-					ModelState.AddModelError("", "There was an error processing your order. Please try again.");
-					return View(order);
-				}
-			}
-			else
+			if (!ModelState.IsValid)
 			{
 				_logger.LogWarning("Order checkout failed validation for {Name}", order.Name);
-				return View();
+				return View(order); // keep validation messages + user input
+			}
+
+			try
+			{
+				order.Lines = cart.Lines.ToArray();
+				order.PaymentStatus = "Pending"; // track until Stripe confirms payment
+
+				repository.SaveOrder(order);
+
+				_logger.LogInformation(
+					"Order {OrderId} created for {Name} with {ItemCount} items. Redirecting to payment.",
+					order.OrderID, order.Name, order.Lines.Count);
+
+				// IMPORTANT: don't clear cart yet — clear only after successful payment confirmation
+				return RedirectToAction("Pay", "Payment", new { orderId = order.OrderID });
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Failed to save order for {Name}", order.Name);
+				ModelState.AddModelError("", "There was an error processing your order. Please try again.");
+				return View(order);
 			}
 		}
 	}
