@@ -67,7 +67,19 @@
 
             if (error) {
                 showMessage(error.message);
+
+                await fetch('/Payment/LogPaymentFailure', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        orderId: orderId,
+                        errorCode: error.code,
+                        errorMessage: error.message
+                    })
+                });
+
                 setLoading(false);
+            
             } else if (paymentIntent && paymentIntent.status === 'succeeded') {
                 // POST to server to confirm and finalize
                 const form = document.createElement('form');

@@ -26,7 +26,6 @@ namespace SportsStore.Controllers
 			_configuration = configuration;
 		}
 
-		// Called after Order form is submitted — shows payment page
 		[HttpGet]
 		public IActionResult Pay(int orderId)
 		{
@@ -45,7 +44,6 @@ namespace SportsStore.Controllers
 			return View(order);
 		}
 
-		// Creates a PaymentIntent and returns the client secret to the frontend
 		[HttpPost]
 		public async Task<IActionResult> CreatePaymentIntent([FromBody] PaymentRequest request)
 		{
@@ -63,7 +61,6 @@ namespace SportsStore.Controllers
 				return BadRequest(new { error = result.ErrorMessage });
 			}
 
-			// Store PaymentIntentId on order
 			var order = _orderRepository.Orders
 				.FirstOrDefault(o => o.OrderID == request.OrderId);
 			if (order != null)
@@ -76,7 +73,6 @@ namespace SportsStore.Controllers
 			return Ok(new { clientSecret = result.ClientSecret });
 		}
 
-		// Called after Stripe.js confirms payment on the frontend
 		[HttpPost]
 		public async Task<IActionResult> ConfirmPayment(int orderId, string paymentIntentId)
 		{
@@ -123,11 +119,28 @@ namespace SportsStore.Controllers
 			_logger.LogWarning("Payment was cancelled by user");
 			return View();
 		}
+
+		[HttpPost]                                              
+		public IActionResult LogPaymentFailure([FromBody] PaymentFailureRequest request)
+		{
+			_logger.LogWarning(
+				"Payment declined for order {OrderId}: {ErrorCode} - {ErrorMessage}",
+				request.OrderId, request.ErrorCode, request.ErrorMessage);
+			return Ok();
+		}
 	}
 
+	
 	public class PaymentRequest
 	{
 		public int OrderId { get; set; }
 		public decimal Amount { get; set; }
+	}
+
+	public class PaymentFailureRequest
+	{
+		public int OrderId { get; set; }
+		public string? ErrorCode { get; set; }
+		public string? ErrorMessage { get; set; }
 	}
 }
