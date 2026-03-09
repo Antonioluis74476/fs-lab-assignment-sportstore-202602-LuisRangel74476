@@ -26,7 +26,6 @@ namespace SportsStore.Controllers
 			_configuration = configuration;
 		}
 
-		// Called after Order form is submitted — shows payment page
 		[HttpGet]
 		public IActionResult Pay(int orderId)
 		{
@@ -45,7 +44,6 @@ namespace SportsStore.Controllers
 			return View(order);
 		}
 
-		// Creates a PaymentIntent and returns the client secret to the frontend
 		[HttpPost]
 		public async Task<IActionResult> CreatePaymentIntent([FromBody] PaymentRequest request)
 		{
@@ -63,7 +61,6 @@ namespace SportsStore.Controllers
 				return BadRequest(new { error = result.ErrorMessage });
 			}
 
-			// Store PaymentIntentId on order
 			var order = _orderRepository.Orders
 				.FirstOrDefault(o => o.OrderID == request.OrderId);
 			if (order != null)
@@ -76,7 +73,6 @@ namespace SportsStore.Controllers
 			return Ok(new { clientSecret = result.ClientSecret });
 		}
 
-		// Called after Stripe.js confirms payment on the frontend
 		[HttpPost]
 		public async Task<IActionResult> ConfirmPayment(int orderId, string paymentIntentId)
 		{
@@ -95,9 +91,21 @@ namespace SportsStore.Controllers
 			{
 				order.PaymentStatus = "Paid";
 				_orderRepository.SaveOrder(order);
-				_cart.Clear();
-				_logger.LogInformation(
-					"Order {OrderId} payment confirmed successfully", orderId);
+
+				var cartSummary = _cart.Lines          // ← BEFORE Clear() ✅
+					.Select(l => new {
+						l.Product.ProductID,
+						l.Product.Name,
+						l.Quantity,
+						l.Product.Price
+					})
+					.ToList();
+
+				_logger.LogInformation(               // ← BEFORE Clear() ✅
+					"Order {OrderId} payment confirmed successfully. Items: {@CartSummary}",
+					orderId, cartSummary);
+
+				_cart.Clear();                        // ← AFTER logging ✅
 				return RedirectToPage("/Completed", new { orderId });
 			}
 			else
@@ -123,11 +131,37 @@ namespace SportsStore.Controllers
 			_logger.LogWarning("Payment was cancelled by user");
 			return View();
 		}
+
+		[HttpPost]
+		public IActionResult LogPaymentFailure([FromBody] PaymentFailureRequest request)
+		{
+			var cartSummary = _cart.Lines              // ← cart still has items ✅
+				.Select(l => new {
+					l.Product.ProductID,
+					l.Product.Name,
+					l.Quantity,
+					l.Product.Price
+				})
+				.ToList();
+
+			_logger.LogWarning(
+				"Payment declined for order {OrderId}: {ErrorCode} - {ErrorMessage}. Items: {@CartSummary}",
+				request.OrderId, request.ErrorCode, request.ErrorMessage, cartSummary);
+
+			return Ok();
+		}
 	}
 
 	public class PaymentRequest
 	{
 		public int OrderId { get; set; }
 		public decimal Amount { get; set; }
+	}
+
+	public class PaymentFailureRequest
+	{
+		public int OrderId { get; set; }
+		public string? ErrorCode { get; set; }
+		public string? ErrorMessage { get; set; }
 	}
 }
