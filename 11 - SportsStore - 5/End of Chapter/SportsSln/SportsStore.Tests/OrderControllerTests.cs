@@ -9,7 +9,6 @@ namespace SportsStore.Tests
 {
 	public class OrderControllerTests
 	{
-
 		private static ILogger<OrderController> GetLogger()
 			=> new Mock<ILogger<OrderController>>().Object;
 
@@ -20,9 +19,7 @@ namespace SportsStore.Tests
 			Cart cart = new Cart();
 			Order order = new Order();
 			OrderController target = new OrderController(mock.Object, cart, GetLogger());
-
 			ViewResult? result = target.Checkout(order) as ViewResult;
-
 			mock.Verify(m => m.SaveOrder(It.IsAny<Order>()), Times.Never);
 			Assert.True(string.IsNullOrEmpty(result?.ViewName));
 			Assert.False(result?.ViewData.ModelState.IsValid);
@@ -36,9 +33,7 @@ namespace SportsStore.Tests
 			cart.AddItem(new Product(), 1);
 			OrderController target = new OrderController(mock.Object, cart, GetLogger());
 			target.ModelState.AddModelError("error", "error");
-
 			ViewResult? result = target.Checkout(new Order()) as ViewResult;
-
 			mock.Verify(m => m.SaveOrder(It.IsAny<Order>()), Times.Never);
 			Assert.True(string.IsNullOrEmpty(result?.ViewName));
 			Assert.False(result?.ViewData.ModelState.IsValid);
@@ -52,11 +47,12 @@ namespace SportsStore.Tests
 			cart.AddItem(new Product(), 1);
 			OrderController target = new OrderController(mock.Object, cart, GetLogger());
 
-			RedirectToPageResult? result =
-				target.Checkout(new Order()) as RedirectToPageResult;
+			RedirectToActionResult? result =
+				target.Checkout(new Order()) as RedirectToActionResult;
 
 			mock.Verify(m => m.SaveOrder(It.IsAny<Order>()), Times.Once);
-			Assert.Equal("/Completed", result?.PageName);
+			Assert.Equal("Pay", result?.ActionName);
+			Assert.Equal("Payment", result?.ControllerName);
 		}
 	}
 }
