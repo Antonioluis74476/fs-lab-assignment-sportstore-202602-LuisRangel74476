@@ -91,9 +91,21 @@ namespace SportsStore.Controllers
 			{
 				order.PaymentStatus = "Paid";
 				_orderRepository.SaveOrder(order);
-				_cart.Clear();
-				_logger.LogInformation(
-					"Order {OrderId} payment confirmed successfully", orderId);
+
+				var cartSummary = _cart.Lines          // ← BEFORE Clear() ✅
+					.Select(l => new {
+						l.Product.ProductID,
+						l.Product.Name,
+						l.Quantity,
+						l.Product.Price
+					})
+					.ToList();
+
+				_logger.LogInformation(               // ← BEFORE Clear() ✅
+					"Order {OrderId} payment confirmed successfully. Items: {@CartSummary}",
+					orderId, cartSummary);
+
+				_cart.Clear();                        // ← AFTER logging ✅
 				return RedirectToPage("/Completed", new { orderId });
 			}
 			else
@@ -120,17 +132,26 @@ namespace SportsStore.Controllers
 			return View();
 		}
 
-		[HttpPost]                                              
+		[HttpPost]
 		public IActionResult LogPaymentFailure([FromBody] PaymentFailureRequest request)
 		{
+			var cartSummary = _cart.Lines              // ← cart still has items ✅
+				.Select(l => new {
+					l.Product.ProductID,
+					l.Product.Name,
+					l.Quantity,
+					l.Product.Price
+				})
+				.ToList();
+
 			_logger.LogWarning(
-				"Payment declined for order {OrderId}: {ErrorCode} - {ErrorMessage}",
-				request.OrderId, request.ErrorCode, request.ErrorMessage);
+				"Payment declined for order {OrderId}: {ErrorCode} - {ErrorMessage}. Items: {@CartSummary}",
+				request.OrderId, request.ErrorCode, request.ErrorMessage, cartSummary);
+
 			return Ok();
 		}
 	}
 
-	
 	public class PaymentRequest
 	{
 		public int OrderId { get; set; }
